@@ -18,8 +18,8 @@ jobs:
     steps:
     - uses: eskatos/gradle-command-action@v1
       with:
-        wrapper-directory: /gradle/
-        gradle-executable: /gradlew
+        wrapper-directory: ./gradle/
+        gradle-executable: ./gradlew
     - uses: nanasess/setup-chromedriver@v1.0.1
     - uses: actions/checkout@v2
     - name: Use Node.js ${{ matrix.node-version }}
