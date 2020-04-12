@@ -16,6 +16,7 @@ jobs:
         node-version: [10.x, 12.x]
 
     steps:
+    - run: ls -lhA
     - uses: eskatos/gradle-command-action@v1
       with:
         wrapper-directory: ./gradle/
