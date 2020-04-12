@@ -2,7 +2,13 @@ name: Kotlin Multiplatform Project
 
 on:
   push:
-    branches: [ master ]
+    branches:
+      - master
+      - fix/*
+      - setup/*
+      - hotfix/*
+      - feature/*
+      - release/*
   pull_request:
     branches: [ master ]
 
@@ -16,13 +22,13 @@ jobs:
         node-version: [10.x, 12.x]
 
     steps:
+    - uses: actions/checkout@v2
     - uses: eskatos/gradle-command-action@v1
       with:
         wrapper-directory: ./gradle/
         gradle-executable: ./gradlew
     - uses: nanasess/setup-chromedriver@v1.0.1
-    - uses: actions/checkout@v2
-    - name: Use Node.js ${{ matrix.node-version }}
+    - name: Run all tests | node=${{ matrix.node-version }}
       uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
