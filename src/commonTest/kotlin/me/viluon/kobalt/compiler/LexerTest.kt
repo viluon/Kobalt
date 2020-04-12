@@ -1,7 +1,6 @@
 package me.viluon.kobalt.compiler
 
-import me.viluon.kobalt.compiler.syntax.Keyword
-import me.viluon.kobalt.compiler.syntax.Operator
+import me.viluon.kobalt.compiler.syntax.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

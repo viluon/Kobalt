@@ -1,19 +1,12 @@
 package me.viluon.kobalt.compiler
 
-import me.viluon.kobalt.compiler.syntax.Keyword
-import me.viluon.kobalt.compiler.syntax.Operator
+import me.viluon.kobalt.compiler.syntax.*
 import me.viluon.kobalt.extensions.isValidInsideIdentifier
 import me.viluon.kobalt.standard.Version
 import me.viluon.kobalt.standard.Versioned
 
-// TODO opening paren on a new line needs special care
 // TODO TkBadNumberLiteral for capturing formatting errors and not failing at the lexer stage
-@Suppress("NOTHING_TO_INLINE")
 class Lexer(private val source: Source, private val version: Version = Version.Lua51) {
-    private companion object {
-//        val singleCharTokens: Array<SingleCharacterToken> = Array()
-    }
-
     private var pos: Int = 0
     private val builder: StringBuilder = StringBuilder()
 
@@ -128,7 +121,7 @@ class Lexer(private val source: Source, private val version: Version = Version.L
                 '=' -> consume(TkOperator(Operator.OpNotEqual))
                 else -> TkOperator(Operator.OpTilde)
             }
-            else -> throw IllegalStateException()
+            else -> throw IllegalArgumentException()
         }
     }
 
