@@ -1,0 +1,4 @@
+rootProject.name = 'kobalt'
+
+
+enableFeaturePreview('GRADLE_METADATA')
