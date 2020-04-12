@@ -3,7 +3,12 @@ name: Kotlin Multiplatform Project
 on:
   push:
     branches:
-      - "*"
+      - master
+      - fix/*
+      - setup/*
+      - hotfix/*
+      - feature/*
+      - release/*
   pull_request:
     branches: [ master ]
 
