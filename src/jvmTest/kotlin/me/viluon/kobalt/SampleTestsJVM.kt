@@ -7,7 +7,6 @@ import kotlin.test.assertTrue
 class SampleTestsJVM {
     @Test
     fun testHello() {
-        println(Keyword.KwAnd.keyword)
         assertTrue("JVM" in hello())
     }
 }

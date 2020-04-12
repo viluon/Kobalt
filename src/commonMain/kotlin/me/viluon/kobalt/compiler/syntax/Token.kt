@@ -1,80 +1,157 @@
 package me.viluon.kobalt.compiler.syntax
 
-import me.viluon.kobalt.extensions.isValidInsideIdentifier
-import me.viluon.kobalt.standard.VersionSpan
+import me.viluon.kobalt.standard.VersionSpan.Companion.permanent
+import me.viluon.kobalt.standard.VersionSpan.Companion.since52
+import me.viluon.kobalt.standard.VersionSpan.Companion.since53
 import me.viluon.kobalt.standard.Versioned
 
 sealed class Token : Versioned {
-    abstract val length: Int
-    abstract val valid: Boolean
-    override val span get() = VersionSpan.permanent
+    override val span = permanent
 }
 
-abstract class StringToken : Token() {
-    abstract val str: String
-    override val length get() = str.length
+interface Operator {
+    val operator: String
+}
+interface Keyword
+interface Literal {
+    val length: Int
+}
+interface SingleCharacter
+
+// TODO how do we store lex errors inside the string?
+data class TkStringLiteral(val str: String, override val length: Int, val valid: Boolean) : Token(), Literal
+data class TkIntegerLiteral(val n: Long, override val length: Int, val valid: Boolean) : Token(), Literal
+data class TkDoubleLiteral(val n: Double, override val length: Int, val valid: Boolean) : Token(), Literal
+
+object TkKwFunction : Token(), Keyword
+object TkKwElseif : Token(), Keyword
+object TkKwRepeat : Token(), Keyword
+object TkKwReturn : Token(), Keyword
+object TkKwLocal : Token(), Keyword
+object TkKwBreak : Token(), Keyword
+object TkKwUntil : Token(), Keyword
+object TkKwWhile : Token(), Keyword
+object TkKwFalse : Token(), Keyword
+object TkKwTrue : Token(), Keyword
+object TkKwThen : Token(), Keyword
+object TkKwElse : Token(), Keyword
+object TkKwAnd : Token(), Keyword
+object TkKwEnd : Token(), Keyword
+object TkKwFor : Token(), Keyword
+object TkKwNot : Token(), Keyword
+object TkKwNil : Token(), Keyword
+object TkKwIf : Token(), Keyword
+object TkKwOr : Token(), Keyword
+object TkKwDo : Token(), Keyword
+object TkKwIn : Token(), Keyword
+object TkKwGoto : Token(), Keyword {
+    override val span = since52
 }
 
-open class SingleCharacterToken : Token() {
-    override val length get() = 1
-    override val valid get() = true
-}
-
-// TODO string interpolation
-data class TkStringLiteral(val str: String, val finished: Boolean, override val length: Int) : Token() {
-    override val valid get() = finished
-}
-
-data class TkIntegerLiteral(val n: Long, override val length: Int, override val valid: Boolean) : Token()
-
-data class TkDoubleLiteral(val n: Double, override val length: Int, override val valid: Boolean) : Token()
-
-data class TkKeyword(val kw: Keyword) : Token() {
-    override val length get() = kw.keyword.length
-    override val valid get() = true
-    override val span get() = kw.span
-}
-
-// TODO lex within comments
-data class TkComment(override val str: String, val finished: Boolean) : StringToken() {
-    override val valid get() = finished
-}
-
-data class TkIdentifier(override val str: String) : StringToken() {
-    override val valid: Boolean get() = str.isNotEmpty() && str[0] !in '0'..'9' && str.all(Char::isValidInsideIdentifier)
-}
-
-data class TkWhitespace(override val str: String) : StringToken() {
-    override val valid get() = true
-}
-
-data class TkLabel(val str: String, override val length: Int, override val valid: Boolean) : Token() {
-    companion object : Versioned {
-        override val span = VersionSpan.since52
+data class TkComment(val contents: String, val finished: Boolean) : Token()
+data class TkIdentifier(val name: String) : Token()
+data class TkWhitespace(val contents: String) : Token()
+data class TkLabel(val name: String, val length: Int, val valid: Boolean) : Token() {
+    companion object {
+        val dummy = TkLabel("<dummy>", 0, false)
     }
-
-    override val span get() = Companion.span
 }
 
-data class TkOperator(val operator: Operator) : Token() {
-    override val length get() = operator.length
-    override val valid get() = true
-    override val span get() = operator.span
+object TkOpAssign : Token(), Operator {
+    override val operator = ("=")
 }
 
-object TkOpenParen : SingleCharacterToken()
-object TkCloseParen : SingleCharacterToken()
-object TkOpenBrace : SingleCharacterToken()
-object TkCloseBrace : SingleCharacterToken()
-object TkOpenBracket : SingleCharacterToken()
-object TkCloseBracket : SingleCharacterToken()
-
-object TkDot : SingleCharacterToken()
-object TkComma : SingleCharacterToken()
-object TkColon : SingleCharacterToken()
-object TkSemicolon : SingleCharacterToken()
-
-object TkEof : Token() {
-    override val length get() = 0
-    override val valid get() = true
+object TkOpEqual : Token(), Operator {
+    override val operator = ("==")
 }
+
+object TkOpNotEqual : Token(), Operator {
+    override val operator = ("~=")
+}
+
+object TkOpLessOrEqual : Token(), Operator {
+    override val operator = ("<=")
+}
+
+object TkOpLessThan : Token(), Operator {
+    override val operator = ("<")
+}
+
+object TkOpGreaterOrEqual : Token(), Operator {
+    override val operator = (">=")
+}
+
+object TkOpGreaterThan : Token(), Operator {
+    override val operator = (">")
+}
+
+object TkOpConcat : Token(), Operator {
+    override val operator = ("..")
+}
+
+object TkOpAdd : Token(), Operator {
+    override val operator = ("+")
+}
+
+object TkOpSub : Token(), Operator {
+    override val operator = ("-")
+}
+
+object TkOpMul : Token(), Operator {
+    override val operator = ("*")
+}
+
+object TkOpDiv : Token(), Operator {
+    override val operator = ("/")
+}
+
+object TkOpMod : Token(), Operator {
+    override val operator = ("%")
+}
+
+object TkOpPow : Token(), Operator {
+    override val operator = ("^")
+}
+
+object TkOpLen : Token(), Operator {
+    override val operator = ("#")
+}
+
+object TkOpBitAnd : Token(), Operator {
+    override val operator = ("&")
+    override val span = since53
+}
+
+object TkOpBitOr : Token(), Operator {
+    override val operator = ("|")
+    override val span = since53
+}
+
+object TkOpBitRshift : Token(), Operator {
+    override val operator = (">>")
+    override val span = since53
+}
+
+object TkOpBitLshift : Token(), Operator {
+    override val operator = ("<<")
+    override val span = since53
+}
+
+object TkOpTilde : Token(), Operator {
+    override val operator = ("~")
+    override val span = since53
+}
+
+object TkOpenParen : Token(), SingleCharacter
+object TkCloseParen : Token(), SingleCharacter
+object TkOpenBrace : Token(), SingleCharacter
+object TkCloseBrace : Token(), SingleCharacter
+object TkOpenBracket : Token(), SingleCharacter
+object TkCloseBracket : Token(), SingleCharacter
+
+object TkDot : Token(), SingleCharacter
+object TkComma : Token(), SingleCharacter
+object TkColon : Token(), SingleCharacter
+object TkSemicolon : Token(), SingleCharacter
+
+object TkEof : Token()

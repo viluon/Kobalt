@@ -22,11 +22,11 @@ class LexerTest {
     @Test
     fun simpleInput() {
         var lexer = Lexer(Source.fromString("<stdin>", "local x = 3"))
-        assertEquals(TkKeyword(Keyword.KwLocal), lexer.lex())
+        assertEquals(TkKwLocal, lexer.lex())
         assertEquals(space, lexer.lex())
         assertEquals(TkIdentifier("x"), lexer.lex())
         assertEquals(space, lexer.lex())
-        assertEquals(TkOperator(Operator.OpAssign), lexer.lex())
+        assertEquals(TkOpAssign, lexer.lex())
         assertEquals(space, lexer.lex())
         assertEquals(TkIntegerLiteral(3L, 1, true), lexer.lex())
 
@@ -39,17 +39,17 @@ class LexerTest {
         """.trimIndent()
             )
         )
-        assertEquals(TkKeyword(Keyword.KwIf), lexer.lex())
+        assertEquals(TkKwIf, lexer.lex())
         lexer.lex()
         assertEquals(TkIdentifier("foo"), lexer.lex())
         assertEquals(space, lexer.lex())
-        assertEquals(TkKeyword(Keyword.KwThen), lexer.lex())
+        assertEquals(TkKwThen, lexer.lex())
         lexer.lex()
         assertEquals(TkIdentifier("bar"), lexer.lex())
         assertEquals(TkOpenParen, lexer.lex())
         assertEquals(TkCloseParen, lexer.lex())
         lexer.lex()
-        assertEquals(TkKeyword(Keyword.KwEnd), lexer.lex())
+        assertEquals(TkKwEnd, lexer.lex())
     }
 
     @Test
@@ -74,9 +74,9 @@ class LexerTest {
         val expected = listOf(
             TkComment("-- my function", true),
             TkWhitespace("\n"),
-            TkKeyword(Keyword.KwLocal),
+            TkKwLocal,
             space,
-            TkKeyword(Keyword.KwFunction),
+            TkKwFunction,
             space,
             TkIdentifier("foo"),
             TkOpenParen,
@@ -89,27 +89,27 @@ class LexerTest {
             TkIdentifier("C"),
             TkCloseParen,
             TkWhitespace("\n    "),
-            TkKeyword(Keyword.KwIf),
+            TkKwIf,
             space,
             TkIdentifier("true_a"),
             space,
-            TkOperator(Operator.OpLessThan),
+            TkOpLessThan,
             space,
             TkIdentifier("for_b"),
             space,
-            TkKeyword(Keyword.KwThen),
+            TkKwThen,
             TkWhitespace("\n        "),
-            TkKeyword(Keyword.KwReturn),
+            TkKwReturn,
             space,
-            TkKeyword(Keyword.KwTrue),
+            TkKwTrue,
             space,
-            TkKeyword(Keyword.KwAnd),
+            TkKwAnd,
             space,
             TkIdentifier("C"),
             TkWhitespace("\n    "),
-            TkKeyword(Keyword.KwEnd),
+            TkKwEnd,
             TkWhitespace("\n\n    "),
-            TkKeyword(Keyword.KwReturn),
+            TkKwReturn,
             space,
             TkIdentifier("foo"),
             TkOpenParen,
@@ -119,7 +119,7 @@ class LexerTest {
             TkIdentifier("true_a"),
             TkCloseParen,
             TkWhitespace("\n"),
-            TkKeyword(Keyword.KwEnd),
+            TkKwEnd,
             TkEof
         )
 

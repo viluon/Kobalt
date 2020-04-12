@@ -5,7 +5,6 @@ import me.viluon.kobalt.extensions.isValidInsideIdentifier
 import me.viluon.kobalt.standard.Version
 import me.viluon.kobalt.standard.Versioned
 
-// TODO TkBadNumberLiteral for capturing formatting errors and not failing at the lexer stage
 class Lexer(private val source: Source, private val version: Version = Version.Lua51) {
     private var pos: Int = 0
     private val builder: StringBuilder = StringBuilder()
@@ -23,13 +22,13 @@ class Lexer(private val source: Source, private val version: Version = Version.L
             ';' -> TkSemicolon
             '-' -> lexCommentOrMinus()
             '"', '\'' -> lexShortString(ch)
-            '+' -> TkOperator(Operator.OpAdd)
-            '*' -> TkOperator(Operator.OpMul)
-            '#' -> TkOperator(Operator.OpLen)
-            '%' -> TkOperator(Operator.OpMod)
-            '^' -> TkOperator(Operator.OpPow)
-            '&' -> TkOperator(Operator.OpBitAnd)
-            '|' -> TkOperator(Operator.OpBitOr)
+            '+' -> (TkOpAdd)
+            '*' -> (TkOpMul)
+            '#' -> (TkOpLen)
+            '%' -> (TkOpMod)
+            '^' -> (TkOpPow)
+            '&' -> (TkOpBitAnd)
+            '|' -> (TkOpBitOr)
             '=', '<', '>', '~' -> lexOperator(ch)
             else -> lexParens(ch)
             // TODO there are illegal characters too, e.g. $, !, ?, @, \, `, ...
@@ -41,7 +40,7 @@ class Lexer(private val source: Source, private val version: Version = Version.L
         return x
     }
 
-    private fun lexColon(): Token = if (peek() == ':' && isEnabled(TkLabel)) {
+    private fun lexColon(): Token = if (peek() == ':' && isEnabled(TkLabel.dummy)) {
         advance()
         when (peek()) {
             null -> TkLabel("", 2, false)
@@ -51,19 +50,16 @@ class Lexer(private val source: Source, private val version: Version = Version.L
                     ':' -> {
                         advance()
                         when (peek()) {
-                            ':' -> consume(TkLabel(id.str, id.length + 4, true))
-                            else -> TkLabel(id.str, id.length + 3, false)
+                            ':' -> consume(TkLabel(id.name, id.length + 4, true))
+                            else -> TkLabel(id.name, id.length + 3, false)
                         }
                     }
-                    else -> TkLabel(id.str, id.length + 2, false)
+                    else -> TkLabel(id.name, id.length + 2, false)
                 }
             }
         }
-    } else {
-        TkColon
-    }
+    } else TkColon
 
-    // TODO TkBadStringLiteral for malformed escapes
     private fun lexShortString(delimiter: Char): TkStringLiteral {
         builder.clear()
         var len = 0
@@ -75,8 +71,8 @@ class Lexer(private val source: Source, private val version: Version = Version.L
         } while (next != delimiter)
 
         return when (peek()) {
-            delimiter -> TkStringLiteral(builder.substring(0, builder.length - 1), true, len - 1)
-            null -> TkStringLiteral(builder.toString(), false, len)
+            delimiter -> TkStringLiteral(builder.substring(0, builder.length - 1), len - 1, true)
+            null -> TkStringLiteral(builder.toString(), len, false)
             else -> throw IllegalStateException()
         }
     }
@@ -97,29 +93,29 @@ class Lexer(private val source: Source, private val version: Version = Version.L
                 }
             }
         }
-        else -> TkOperator(Operator.OpSub)
+        else -> (TkOpSub)
     }
 
     private fun lexOperator(first: Char): Token {
         val next = peek()
         return when (first) {
             '=' -> when (next) {
-                '=' -> consume(TkOperator(Operator.OpEqual))
-                else -> TkOperator(Operator.OpAssign)
+                '=' -> consume(TkOpEqual)
+                else -> TkOpAssign
             }
             '<' -> when (next) {
-                '=' -> consume(TkOperator(Operator.OpLessOrEqual))
-                '<' -> consume(TkOperator(Operator.OpBitLshift))
-                else -> TkOperator(Operator.OpLessThan)
+                '=' -> consume(TkOpLessOrEqual)
+                '<' -> consume(TkOpBitLshift)
+                else -> TkOpLessThan
             }
             '>' -> when (next) {
-                '=' -> consume(TkOperator(Operator.OpGreaterOrEqual))
-                '>' -> consume(TkOperator(Operator.OpBitRshift))
-                else -> TkOperator(Operator.OpGreaterThan)
+                '=' -> consume(TkOpGreaterOrEqual)
+                '>' -> consume(TkOpBitRshift)
+                else -> TkOpGreaterThan
             }
             '~' -> when (next) {
-                '=' -> consume(TkOperator(Operator.OpNotEqual))
-                else -> TkOperator(Operator.OpTilde)
+                '=' -> consume(TkOpNotEqual)
+                else -> TkOpTilde
             }
             else -> throw IllegalArgumentException()
         }
@@ -186,59 +182,59 @@ class Lexer(private val source: Source, private val version: Version = Version.L
         builder.clear().append(first)
         return when (first) {
             'a' -> lex_a(next)
-            'b' -> lexKeywordOrIdentifier(Keyword.KwBreak, next)
-            'd' -> lexKeywordOrIdentifier(Keyword.KwDo, next)
+            'b' -> lexKeywordOrIdentifier(TkKwBreak, next)
+            'd' -> lexKeywordOrIdentifier(TkKwDo, next)
             'e' -> when (next) {
-                'n' -> lexKeywordOrIdentifier(Keyword.KwEnd, next)
+                'n' -> lexKeywordOrIdentifier(TkKwEnd, next)
                 'l' -> {
-                    val tk = lexKeywordOrIdentifier(Keyword.KwElse, next)
-                    if (tk is TkIdentifier && tk.str == Keyword.KwElseif.keyword) TkKeyword(Keyword.KwElseif)
+                    val tk = lexKeywordOrIdentifier(TkKwElse, next)
+                    if (tk is TkIdentifier && tk.name == TkKwElseif.keyword) TkKwElseif
                     else tk
                 }
                 else -> lexRestOfIdentifierWithoutClearing(next)
             }
             'f' -> when (next) {
-                'a' -> lexKeywordOrIdentifier(Keyword.KwFalse, next)
-                'o' -> lexKeywordOrIdentifier(Keyword.KwFor, next)
-                'u' -> lexKeywordOrIdentifier(Keyword.KwFunction, next)
+                'a' -> lexKeywordOrIdentifier(TkKwFalse, next)
+                'o' -> lexKeywordOrIdentifier(TkKwFor, next)
+                'u' -> lexKeywordOrIdentifier(TkKwFunction, next)
                 else -> lexRestOfIdentifierWithoutClearing(next)
             }
-            'g' -> lexKeywordOrIdentifier(Keyword.KwGoto, next)
+            'g' -> lexKeywordOrIdentifier(TkKwGoto, next)
             'i' -> when (next) {
-                'f' -> lexKeywordOrIdentifier(Keyword.KwIf, next)
-                'n' -> lexKeywordOrIdentifier(Keyword.KwIn, next)
+                'f' -> lexKeywordOrIdentifier(TkKwIf, next)
+                'n' -> lexKeywordOrIdentifier(TkKwIn, next)
                 else -> lexRestOfIdentifierWithoutClearing(next)
             }
-            'l' -> lexKeywordOrIdentifier(Keyword.KwLocal, next)
+            'l' -> lexKeywordOrIdentifier(TkKwLocal, next)
             'n' -> when (next) {
-                'i' -> lexKeywordOrIdentifier(Keyword.KwNil, next)
-                'o' -> lexKeywordOrIdentifier(Keyword.KwNot, next)
+                'i' -> lexKeywordOrIdentifier(TkKwNil, next)
+                'o' -> lexKeywordOrIdentifier(TkKwNot, next)
                 else -> lexRestOfIdentifierWithoutClearing(next)
             }
-            'o' -> lexKeywordOrIdentifier(Keyword.KwOr, next)
+            'o' -> lexKeywordOrIdentifier(TkKwOr, next)
             'r' -> when (next) {
                 'e' -> {
                     builder.append(advance())
                     when (val third = peek()) {
-                        'p' -> lexKeywordOrIdentifier(Keyword.KwRepeat, third, 2)
-                        't' -> lexKeywordOrIdentifier(Keyword.KwReturn, third, 2)
+                        'p' -> lexKeywordOrIdentifier(TkKwRepeat, third, 2)
+                        't' -> lexKeywordOrIdentifier(TkKwReturn, third, 2)
                         else -> lexRestOfIdentifierWithoutClearing(third)
                     }
                 }
                 else -> lexRestOfIdentifierWithoutClearing(next)
             }
             't' -> when (next) {
-                'h' -> lexKeywordOrIdentifier(Keyword.KwThen, next)
-                'r' -> lexKeywordOrIdentifier(Keyword.KwTrue, next)
+                'h' -> lexKeywordOrIdentifier(TkKwThen, next)
+                'r' -> lexKeywordOrIdentifier(TkKwTrue, next)
                 else -> lexRestOfIdentifierWithoutClearing(next)
             }
-            'u' -> lexKeywordOrIdentifier(Keyword.KwUntil, next)
-            'w' -> lexKeywordOrIdentifier(Keyword.KwWhile, next)
+            'u' -> lexKeywordOrIdentifier(TkKwUntil, next)
+            'w' -> lexKeywordOrIdentifier(TkKwWhile, next)
             else -> lexRestOfIdentifierWithoutClearing(next)
         }
     }
 
-    private fun lexKeywordOrIdentifier(kw: Keyword, next: Char, offset: Int = 1): Token {
+    private fun <Tk> lexKeywordOrIdentifier(kw: Tk, next: Char, offset: Int = 1): Token where Tk : Token, Tk : Keyword {
         var i = 1 + offset
         if (next != kw.keyword[offset] || !isEnabled(kw)) return lexRestOfIdentifierWithoutClearing(next)
         builder.append(advance())
@@ -255,7 +251,7 @@ class Lexer(private val source: Source, private val version: Version = Version.L
             return lexRestOfIdentifierWithoutClearing(n)
         }
 
-        return TkKeyword(kw)
+        return kw
     }
 
     private fun lex_a(next: Char): Token {
@@ -270,7 +266,7 @@ class Lexer(private val source: Source, private val version: Version = Version.L
                     builder.append("nd")
                     lexRestOfIdentifierWithoutClearing(fourth)
                 } else {
-                    TkKeyword(Keyword.KwAnd)
+                    TkKwAnd
                 }
             } else {
                 // prefix "an"
