@@ -28,7 +28,7 @@ jobs:
         wrapper-directory: ./gradle/
         gradle-executable: ./gradlew
     - uses: nanasess/setup-chromedriver@v1.0.1
-    - name: Use Node.js ${{ matrix.node-version }}
+    - name: Run all tests | node=${{ matrix.node-version }}
       uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
