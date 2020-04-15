@@ -22,13 +22,13 @@ class Lexer(private val source: Source, private val version: Version = Version.L
             ';' -> TkSemicolon
             '-' -> lexCommentOrMinus()
             '"', '\'' -> lexShortString(ch)
-            '+' -> (TkOpAdd)
-            '*' -> (TkOpMul)
-            '#' -> (TkOpLen)
-            '%' -> (TkOpMod)
-            '^' -> (TkOpPow)
-            '&' -> (TkOpBitAnd)
-            '|' -> (TkOpBitOr)
+            '+' -> TkOpAdd
+            '*' -> TkOpMul
+            '#' -> TkOpLen
+            '%' -> TkOpMod
+            '^' -> TkOpPow
+            '&' -> TkOpBitAnd
+            '|' -> TkOpBitOr
             '=', '<', '>', '~' -> lexOperator(ch)
             else -> lexParens(ch)
             // TODO there are illegal characters too, e.g. $, !, ?, @, \, `, ...

@@ -15,5 +15,5 @@ fun length(token: Token): Int = when (token) {
 
 val Token.length: Int get() = length(this)
 
-fun <T> keyword(token: T): String where T : Token, T : Keyword = token::class.simpleName!!.substring(4)
+fun <T> keyword(token: T): String where T : Token, T : Keyword = token::class.simpleName!!.substring(4).toLowerCase()
 val <T> T.keyword: String where T : Token, T : Keyword get() = keyword(this)
