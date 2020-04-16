@@ -4,8 +4,10 @@ import me.viluon.kobalt.extensions.text.Magenta
 import me.viluon.kobalt.extensions.text.None
 import me.viluon.kobalt.extensions.text.Pretty
 import me.viluon.kobalt.extensions.text.Text
+import kotlin.native.concurrent.ThreadLocal
 
 sealed class BasicBlock : Verifiable, Pretty {
+    @ThreadLocal
     companion object {
         private var i = 0
     }

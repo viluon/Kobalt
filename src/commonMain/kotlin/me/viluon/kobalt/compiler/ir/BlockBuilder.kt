@@ -72,6 +72,7 @@ data class InnerBlockBuilder(private val block: InnerBlock) : BlockBuilder {
         return instr
     }
 
+    // TODO make this inline
     override fun block(f: BlockBuilder.() -> Terminator): BasicBlock = InnerBlock().apply {
         open {
             this@InnerBlockBuilder.proxies.forEach { it.builder = this as InnerBlockBuilder }

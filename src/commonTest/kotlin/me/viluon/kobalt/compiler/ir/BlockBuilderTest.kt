@@ -12,8 +12,8 @@ class BlockBuilderTest {
             val z0 = alloc("z", TyDouble)
 
             val one = const(1.0)
-            val y1 = y0.loadK(one)
-            val z1 = z0.loadK(one)
+            val y1 = y0 loadK one
+            val z1 = z0 loadK one
 
             val x1 = x0.add(y1, z1)
             ret(x1)
