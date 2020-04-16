@@ -25,13 +25,13 @@ data class InstrReturn1<T : LuaType>(val v: Proxy<T, *>) : Terminator() {
 
 data class InstrJump(val target: BasicBlock) : Terminator() {
     override val invariants = none
-    override fun pretty(): Text = super.pretty() + Red + "#${target.id}"
+    override fun pretty(): Text = super.pretty() + Magenta + "#${target.id}"
 }
 
 data class InstrEqI(val left: PI, val right: PI, val targetEq: BasicBlock, val targetNeq: BasicBlock) : Terminator() {
     override val invariants get() = none
     override fun pretty(): Text =
-        super.pretty() + left.pretty() + " " + right.pretty() + " #${targetEq.id} #${targetNeq.id}"
+        super.pretty() + left.pretty() + " " + right.pretty() + Magenta + " #${targetEq.id} #${targetNeq.id}"
 }
 
 sealed class BinaryInstruction<T : LuaType>(
@@ -54,12 +54,12 @@ sealed class BinaryInstruction<T : LuaType>(
 class InstrAddI(target: PI, left: PI, right: PI) : BinaryInstruction<TyInteger>(target, left, right)
 class InstrAddF(target: PF, left: PF, right: PF) : BinaryInstruction<TyDouble>(target, left, right)
 
-data class InstrLoadI(val target: PI, val n: ConstI): Instruction() {
+data class InstrLoadI(val target: PI, val n: ConstI) : Instruction() {
     override val invariants = none
     override fun pretty(): Text = Text() + Blue + instructionName + " " + target.pretty() + " " + n.pretty()
 }
 
-data class InstrLoadF(val target: PF, val n : ConstF): Instruction() {
+data class InstrLoadF(val target: PF, val n: ConstF) : Instruction() {
     override val invariants = none
     override fun pretty(): Text = Text() + Blue + instructionName + " " + target.pretty() + " " + n.pretty()
 }
@@ -74,5 +74,5 @@ data class InstrPhiI(val target: PI, val arguments: List<PI>) : Instruction(), P
             }
 
     override fun pretty(): Text =
-        Text() + Green + "phi" + None + arguments.fold("") { acc, arg -> acc + " " + arg.v.id.name }
+        arguments.fold(Text() + Green + instructionName + " " + target.pretty()) { acc, arg -> acc + " " + arg.pretty() }
 }

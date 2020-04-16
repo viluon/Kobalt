@@ -92,3 +92,29 @@ infix fun <n : Nat, T : LuaConstantType> Proxy<T, n>.loadK(const: Constant<T>): 
     return next
 }
 
+fun <n : Nat, m : Nat, k : Nat> Proxy<TyInteger, n>.phiI(
+    a: Proxy<TyInteger, S<m>>,
+    b: Proxy<TyInteger, S<k>>
+): Proxy<TyInteger, S<n>> {
+    builder emit InstrPhiI(next as PI, a, b)
+    return next
+}
+
+fun <n : Nat, m : Nat, k : Nat, j : Nat> Proxy<TyInteger, n>.phiI(
+    a: Proxy<TyInteger, S<m>>,
+    b: Proxy<TyInteger, S<k>>,
+    c: Proxy<TyInteger, S<j>>
+): Proxy<TyInteger, S<n>> {
+    builder emit InstrPhiI(next as PI, a, b, c)
+    return next
+}
+
+fun <n : Nat, m : Nat, k : Nat, j : Nat, l : Nat> Proxy<TyInteger, n>.phiI(
+    a: Proxy<TyInteger, S<m>>,
+    b: Proxy<TyInteger, S<k>>,
+    c: Proxy<TyInteger, S<j>>,
+    d: Proxy<TyInteger, S<l>>
+): Proxy<TyInteger, S<n>> {
+    builder emit InstrPhiI(next as PI, a, b, c, d)
+    return next
+}

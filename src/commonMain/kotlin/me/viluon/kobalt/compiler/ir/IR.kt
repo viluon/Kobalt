@@ -9,7 +9,7 @@ import kotlin.native.concurrent.ThreadLocal
 sealed class BasicBlock : Verifiable, Pretty {
     @ThreadLocal
     companion object {
-        private var i = 0
+        internal var i = 0
     }
 
     internal val id = i++
@@ -72,7 +72,7 @@ sealed class BasicBlock : Verifiable, Pretty {
 }
 
 class InnerBlock : BasicBlock() {
-    inline fun open(builder: BlockBuilder.() -> Terminator): InnerBlock {
+    inline fun open(builder: InnerBlockBuilder.() -> Terminator): InnerBlock {
         builder(InnerBlockBuilder(this))
         return this
     }
@@ -80,7 +80,7 @@ class InnerBlock : BasicBlock() {
     override fun pretty(): Text {
         var txt = Text() + ";; " + Magenta + "block #$id\n"
 
-        txt = txt + None + "; variables\n"
+        if (variables.isNotEmpty()) txt = txt + None + "; variables\n"
         for (v in variables) {
             txt = txt + "\t" + v.pretty() + "\n"
         }
@@ -104,7 +104,7 @@ class RootBlock : BasicBlock() {
     override val instructions: MutableList<Instruction> = empty as MutableList<Instruction>
     override val predecessors: MutableList<BasicBlock> = empty as MutableList<BasicBlock>
 
-    inline fun open(builder: BlockBuilder.() -> Terminator): RootBlock {
+    inline fun open(builder: InnerBlockBuilder.() -> Terminator): RootBlock {
         if (followers.isNotEmpty()) {
             val first = followers.first() as InnerBlock
             first.open(builder)

@@ -1,9 +1,15 @@
 package me.viluon.kobalt.compiler.ir
 
 import me.viluon.kobalt.testUtils.assertValid
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 
 class BlockBuilderTest {
+    @BeforeTest
+    fun resetBlockCounter() {
+        BasicBlock.i = 0
+    }
+
     @Test
     fun basicAlloc() {
         val ir = RootBlock().open {
@@ -24,7 +30,7 @@ class BlockBuilderTest {
     }
 
     @Test
-    fun basicLoop() {
+    fun basicBranch() {
         val ir = RootBlock().open {
             val x0 = alloc("x", TyInteger)
             val y0 = alloc("y", TyInteger)
@@ -39,6 +45,39 @@ class BlockBuilderTest {
             }, block {
                 val x2 = x1.add(x1, y1)
                 ret(x2)
+            })
+        }
+
+        println(ir.asDot())
+        ir.assertValid()
+    }
+
+    @Suppress("NAME_SHADOWING")
+    @Test
+    fun basicLoop() {
+        val ir = RootBlock().open {
+            val i0 = alloc("i", TyInteger)
+            val limit0 = alloc("limit", TyInteger)
+            val step0 = alloc("step", TyInteger)
+
+            val zero = const(0)
+            val one = const(1)
+            val twelve = const(12)
+
+            val i1 = i0 loadK zero
+            val limit = limit0 loadK twelve
+            val step = step0 loadK one
+
+            val i2 = i1.next
+            val i3 = i2.next
+
+            jmp(block {
+                val i2 = i1.phiI(i1, i3)
+                val i3 = i2.add(i2, step)
+
+                eqI(i3, limit, block {
+                    ret(limit)
+                }, self)
             })
         }
 
