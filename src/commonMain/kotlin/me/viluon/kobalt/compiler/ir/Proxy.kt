@@ -3,12 +3,15 @@ package me.viluon.kobalt.compiler.ir
 import me.viluon.kobalt.extensions.Nat
 import me.viluon.kobalt.extensions.S
 import me.viluon.kobalt.extensions.Z
+import me.viluon.kobalt.extensions.text.None
+import me.viluon.kobalt.extensions.text.Pretty
+import me.viluon.kobalt.extensions.text.Text
 
 class Proxy<T : LuaType, n : Nat>(
-    val builder: InnerBlockBuilder,
+    var builder: InnerBlockBuilder,
     val v: Variable<T>,
     private val usages: n
-) {
+) : Pretty {
     companion object {
         @Suppress("NOTHING_TO_INLINE")
         inline operator fun <T : LuaType> invoke(builder: InnerBlockBuilder, v: Variable<T>): Proxy<T, Z> {
@@ -17,7 +20,9 @@ class Proxy<T : LuaType, n : Nat>(
     }
 
     // TODO room for optimisation
-    val next: Proxy<T, S<n>> by lazy { Proxy(builder, v, S(usages)) }
+    val next: Proxy<T, S<n>> by lazy { Proxy(builder, v, S(usages)).also { builder.proxies.add(it) } }
+
+    override fun pretty(): Text = Text() + None + (v.id.name + "_" + usages.value)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -32,24 +37,25 @@ class Proxy<T : LuaType, n : Nat>(
     }
 }
 
-inline fun <reified A : LuaType, T : LuaType> Proxy<T, *>.cast(
+internal inline fun <reified A : LuaType, T : LuaType> Proxy<T, *>.castBinOp(
     f: (t: Proxy<A, *>, l: Proxy<A, *>, r: Proxy<A, *>) -> Instruction,
     left: Proxy<*, *>,
     right: Proxy<*, *>
 ): Instruction {
     v.type as A
     @Suppress("UNCHECKED_CAST")
+    // TODO try to enforce use of next in the type signatures
     return f(next as Proxy<A, *>, left as Proxy<A, *>, right as Proxy<A, *>)
 }
 
 fun <n : Nat, m : Nat, k : Nat, T : LuaType> Proxy<T, n>.add(
-    left: Proxy<T, m>,
-    right: Proxy<T, k>
+    left: Proxy<T, S<m>>,
+    right: Proxy<T, S<k>>
 ): Proxy<T, S<n>> {
     @Suppress("USELESS_CAST")
     builder emit (when (v.type as LuaType) {
-        TyInteger -> cast(::InstrAddI, left, right)
-        TyDouble -> cast(::InstrAddF, left, right)
+        TyInteger -> castBinOp(::InstrAddI, left, right)
+        TyDouble -> castBinOp(::InstrAddF, left, right)
         TyString -> TODO("adding strings should parse them <5.4")
         TyCoroutine -> TODO()
         TyFunction -> TODO()
@@ -61,3 +67,28 @@ fun <n : Nat, m : Nat, k : Nat, T : LuaType> Proxy<T, n>.add(
 
     return next
 }
+
+typealias LoadKConstructor<A> = (Proxy<A, *>, Constant<A>) -> Instruction
+
+internal inline fun <reified A : LuaConstantType, T : LuaConstantType> Proxy<T, *>.castLoad(
+    f: (t: Proxy<A, *>, n: Constant<A>) -> Instruction,
+    const: Constant<T>
+): Instruction {
+    v.type as A
+    @Suppress("UNCHECKED_CAST")
+    return f(next as Proxy<A, *>, const as Constant<A>)
+}
+
+infix fun <n : Nat, T : LuaConstantType> Proxy<T, n>.loadK(const: Constant<T>): Proxy<T, S<n>> {
+    @Suppress("USELESS_CAST", "UNCHECKED_CAST")
+    builder emit (when (v.type as LuaConstantType) {
+        TyBoolean -> TODO()
+        TyInteger -> castLoad(::InstrLoadI as LoadKConstructor<TyInteger>, const)
+        TyDouble -> castLoad(::InstrLoadF as LoadKConstructor<TyDouble>, const)
+        TyString -> TODO()
+        TyNil -> TODO()
+    })
+
+    return next
+}
+

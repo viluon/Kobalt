@@ -16,7 +16,6 @@ interface Verifiable {
     }
 
     val verifiableChildren: Iterable<Verifiable> get() = listOf()
-    val none: Invariants get() = Invariants()
     val invariants: Invariants
 
     fun checkInvariants(greatAncestors: List<Verifiable> = listOf(), processed: Set<Verifiable> = setOf()): List<Error> {
@@ -34,3 +33,9 @@ interface Verifiable {
 }
 
 val Verifiable.define: Verifiable.Invariants get() = Verifiable.Invariants()
+
+@Deprecated(
+    "Please define the invariants of this entity.",
+    ReplaceWith("define.invariant(TODO()) { TODO() }")
+)
+val Verifiable.none: Verifiable.Invariants get() = Verifiable.Invariants()

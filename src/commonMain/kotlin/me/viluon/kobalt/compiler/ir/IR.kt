@@ -1,14 +1,23 @@
 package me.viluon.kobalt.compiler.ir
 
-sealed class BasicBlock : Verifiable {
+import me.viluon.kobalt.extensions.text.Magenta
+import me.viluon.kobalt.extensions.text.None
+import me.viluon.kobalt.extensions.text.Pretty
+import me.viluon.kobalt.extensions.text.Text
+
+sealed class BasicBlock : Verifiable, Pretty {
+    companion object {
+        private var i = 0
+    }
+
+    internal val id = i++
+    open val constants: MutableList<Constant<*>> = ArrayList(4)
     open val variables: MutableList<Variable<*>> = ArrayList(4)
     open val instructions: MutableList<Instruction> = ArrayList(8)
     open val predecessors: MutableList<BasicBlock> = ArrayList(2)
     val followers: MutableList<BasicBlock> = ArrayList(2)
-
     override val verifiableChildren: Iterable<Verifiable>
-        get() = variables + instructions + predecessors + followers
-
+        get() = (variables as Iterable<Verifiable>) + instructions + predecessors + followers
     override val invariants
         get() = define
             .invariant(instructions.isNotEmpty() && instructions.firstOrNull { it is Terminator } == instructions.last()) {
@@ -20,12 +29,66 @@ sealed class BasicBlock : Verifiable {
             .invariant(instructions.isNotEmpty()) {
                 "The instruction list should not be empty."
             }
+            .invariant(followers.toSet().size == followers.size) {
+                "Followers should be unique."
+            }
+            .invariant(predecessors.toSet().size == predecessors.size) {
+                "Predecessors should be unique."
+            }
+            .invariant(constants.toSet().size == constants.size) {
+                "Constants should be unique."
+            }
+
+    fun asDot() = """digraph {
+        bgcolor=black;
+        fontcolor=white;
+        color=white;
+        ${toDot()}
+    }""".trimIndent()
+
+    private fun toDot(processed: Set<BasicBlock> = setOf()): String {
+        val prefix = """
+            node$id [
+                shape=plain
+                label=<<font face="Iosevka SS08, monospace">
+                    <table align="left" border="2" bgcolor="white">
+                    <tr><td bgcolor="black">
+                    ${pretty().toHTML()}
+                    </td></tr>
+                    </table>
+                    </font>>
+            ];
+            
+        """.trimIndent()
+
+        return followers
+            .filterNot { it === this || processed.contains(it) }
+            .fold(followers.fold(prefix) { str, block ->
+                str + "node$id -> node${block.id} [color=white];\n"
+            }) { str, block -> str + block.toDot(processed + this) }
+    }
 }
 
 class InnerBlock : BasicBlock() {
     inline fun open(builder: BlockBuilder.() -> Terminator): InnerBlock {
         builder(InnerBlockBuilder(this))
         return this
+    }
+
+    override fun pretty(): Text {
+        var txt = Text() + ";; " + Magenta + "block #$id\n"
+
+        txt = txt + None + "; variables\n"
+        for (v in variables) {
+            txt = txt + "\t" + v.pretty() + "\n"
+        }
+
+        txt = txt + None + "\n; instructions\n"
+        for (i in instructions) {
+            txt = txt + "\t" + i.pretty() + "\n"
+        }
+
+        return txt
     }
 }
 
@@ -40,6 +103,12 @@ class RootBlock : BasicBlock() {
     override val predecessors: MutableList<BasicBlock> = empty as MutableList<BasicBlock>
 
     inline fun open(builder: BlockBuilder.() -> Terminator): RootBlock {
+        if (followers.isNotEmpty()) {
+            val first = followers.first() as InnerBlock
+            first.open(builder)
+            return this
+        }
+
         val first = InnerBlock()
         this.followers.add(first)
         first.predecessors.add(this)
@@ -56,4 +125,6 @@ class RootBlock : BasicBlock() {
             .invariant(followers.size == 1) {
                 "The root block should have exactly one follower."
             }
+
+    override fun pretty(): Text = Text() + ";;; root\n"
 }
