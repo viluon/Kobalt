@@ -1,59 +1,33 @@
 package me.viluon.kobalt.compiler.ir
 
-import me.viluon.kobalt.compiler.syntax.TkIdentifier
-
-data class Renamed<T : LuaType>(val i: Short, val v: Variable<T>)
-
-data class Variable<T : LuaType>(
-    val id: TkIdentifier,
-    val definedAt: Short,
-    val type: T,
-    var liveAt: Short = definedAt
-) : Verifiable {
-    override val invariants
-        get() = define.invariant(definedAt <= liveAt) {
-            "The liveness of a variable must follow its definition."
-        }
-}
-
 sealed class BasicBlock : Verifiable {
     open val variables: MutableList<Variable<*>> = ArrayList(4)
     open val instructions: MutableList<Instruction> = ArrayList(8)
     open val predecessors: MutableList<BasicBlock> = ArrayList(2)
     val followers: MutableList<BasicBlock> = ArrayList(2)
 
-    fun <T : LuaType> alloc(id: TkIdentifier, at: Short, type: T): Variable<T> {
-        val v = Variable(id, at, type)
-        variables.add(v)
-        return v
-    }
-
-    open fun emit(instr: Instruction): BasicBlock {
-        instructions.add(instr)
-
-        // FIXME this isn't how terminators should behave
-        return if (instr is Terminator) {
-            val next = InnerBlock()
-            followers.add(next)
-            next.predecessors.add(this)
-            next
-        } else this
-    }
-
     override val verifiableChildren: Iterable<Verifiable>
         get() = variables + instructions + predecessors + followers
 
     override val invariants
         get() = define
-            .invariant(instructions.firstOrNull { it is Terminator } == instructions.lastOrNull()) {
-                "There must be exactly one terminator instruction in a non-empty block, and it must be the last one."
+            .invariant(instructions.isNotEmpty() && instructions.firstOrNull { it is Terminator } == instructions.last()) {
+                "There should be exactly one terminator instruction in a block, and it should be the last one."
             }
-            .invariant(variables.size <= instructions.size) {
-                "The number of variables must not exceed the number of instructions."
+            .invariant(predecessors.isNotEmpty()) {
+                "There should be at least one predecessor."
+            }
+            .invariant(instructions.isNotEmpty()) {
+                "The instruction list should not be empty."
             }
 }
 
-class InnerBlock : BasicBlock()
+class InnerBlock : BasicBlock() {
+    inline fun open(builder: BlockBuilder.() -> Terminator): InnerBlock {
+        builder(InnerBlockBuilder(this))
+        return this
+    }
+}
 
 @Suppress("UNCHECKED_CAST")
 class RootBlock : BasicBlock() {
@@ -65,9 +39,21 @@ class RootBlock : BasicBlock() {
     override val instructions: MutableList<Instruction> = empty as MutableList<Instruction>
     override val predecessors: MutableList<BasicBlock> = empty as MutableList<BasicBlock>
 
-    override fun emit(instr: Instruction): BasicBlock {
-        val next = InnerBlock()
-        followers.add(next)
-        return next.emit(instr)
+    inline fun open(builder: BlockBuilder.() -> Terminator): RootBlock {
+        val first = InnerBlock()
+        this.followers.add(first)
+        first.predecessors.add(this)
+
+        first.open(builder)
+        return this
     }
+
+    override val invariants
+        get() = define
+            .invariant(empty.isEmpty()) {
+                "The root block should have no variables, no instructions, and no predecessors."
+            }
+            .invariant(followers.size == 1) {
+                "The root block should have exactly one follower."
+            }
 }
