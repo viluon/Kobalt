@@ -3,15 +3,13 @@ package me.viluon.kobalt.compiler.ir
 import me.viluon.kobalt.extensions.Nat
 import me.viluon.kobalt.extensions.S
 import me.viluon.kobalt.extensions.Z
-import me.viluon.kobalt.extensions.text.None
-import me.viluon.kobalt.extensions.text.Pretty
-import me.viluon.kobalt.extensions.text.Text
+import me.viluon.kobalt.extensions.text.*
 
 class Proxy<T : LuaType, n : Nat>(
     var builder: InnerBlockBuilder,
     val v: Variable<T>,
     private val usages: n
-) : Pretty {
+) : Pretty, TableCell {
     companion object {
         @Suppress("NOTHING_TO_INLINE")
         inline operator fun <T : LuaType> invoke(builder: InnerBlockBuilder, v: Variable<T>): Proxy<T, Z> {
@@ -23,6 +21,7 @@ class Proxy<T : LuaType, n : Nat>(
     val next: Proxy<T, S<n>> by lazy { Proxy(builder, v, S(usages)).also { builder.proxies.add(it) } }
 
     override fun pretty(): Text = Text() + None + (v.id.name + "_" + usages.value)
+    override fun asCell(): TableData = TableData(Text() + v.id.name + "<sub>${usages.value}</sub>")
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

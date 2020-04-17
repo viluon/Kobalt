@@ -1,12 +1,9 @@
 package me.viluon.kobalt.compiler.ir
 
-import me.viluon.kobalt.extensions.text.Magenta
-import me.viluon.kobalt.extensions.text.None
-import me.viluon.kobalt.extensions.text.Pretty
-import me.viluon.kobalt.extensions.text.Text
+import me.viluon.kobalt.extensions.text.*
 import kotlin.native.concurrent.ThreadLocal
 
-sealed class BasicBlock : Verifiable, Pretty {
+sealed class BasicBlock : Verifiable, Pretty, Tabular {
     @ThreadLocal
     companion object {
         internal var i = 0
@@ -49,15 +46,15 @@ sealed class BasicBlock : Verifiable, Pretty {
     }""".trimIndent()
 
     private fun toDot(processed: Set<BasicBlock> = setOf()): String {
+        val (tableHTML, nodeConnections) = asTable().toHTML(listOf())
+
         val prefix = """
             node$id [
                 shape=plain
                 label=<<font face="Iosevka SS08, monospace">
-                    <table align="left" border="2" bgcolor="white">
-                    <tr><td bgcolor="black">
-                    ${pretty().toHTML()}
-                    </td></tr>
-                    </table>
+                    <table border="0" bgcolor="white" cellpadding="0"><tr><td>
+                    $tableHTML
+                    </td></tr></table>
                     </font>>
             ];
             
@@ -65,9 +62,21 @@ sealed class BasicBlock : Verifiable, Pretty {
 
         return followers
             .filterNot { it === this || processed.contains(it) }
-            .fold(followers.fold(prefix) { str, block ->
-                str + "node$id -> node${block.id} [color=white];\n"
-            }) { str, block -> str + block.toDot(processed + this) }
+            .fold(prefix) { str, block -> str + block.toDot(processed + this) } +
+                nodeConnections.fold("") { acc, (port, nodeId) ->
+                    acc + "node$id:$port -> node$nodeId:n [color=white];\n"
+                }
+    }
+
+    override fun asTable(): Table {
+        val rows = mutableListOf(TableRow(listOf(TableData(Text() + ";; " + Magenta + "block #$id"))))
+
+        if (variables.isNotEmpty()) for (v in variables)
+            rows.add(TableRow(listOf(TableData(v.pretty()))))
+
+        for (i in instructions) rows.add(i.asRow())
+
+        return Table(rows)
     }
 }
 
@@ -86,9 +95,8 @@ class InnerBlock : BasicBlock() {
         }
 
         txt = txt + None + "\n; instructions\n"
-        for (i in instructions) {
+        for (i in instructions)
             txt = txt + "\t" + i.pretty() + "\n"
-        }
 
         return txt
     }

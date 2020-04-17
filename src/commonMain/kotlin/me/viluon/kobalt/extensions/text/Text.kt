@@ -1,7 +1,7 @@
 package me.viluon.kobalt.extensions.text
 
 @Suppress("NOTHING_TO_INLINE")
-data class Text(val fragments: List<Pair<Formatting, String>>) {
+data class Text(val fragments: List<Fragment>) {
     companion object {
         inline operator fun invoke(): Text = Text("")
 
@@ -10,17 +10,21 @@ data class Text(val fragments: List<Pair<Formatting, String>>) {
         }
 
         inline operator fun invoke(fmt: Formatting, str: String): Text {
-            return Text(listOf(Pair(fmt, str)))
+            return Text(listOf(Formatted(fmt, str)))
         }
     }
 
-    inline operator fun plus(str: String): Text = this + Text(fragments.last().first, str)
+    inline operator fun plus(str: String): Text = this + Text((fragments.last() as? Formatted)?.fmt ?: None, str)
     inline operator fun plus(txt: Text): Text = Text(fragments + txt.fragments)
     inline operator fun plus(fmt: Formatting): Text = this + Text(fmt, "")
+    inline operator fun plus(frag: Fragment): Text = Text(fragments + frag)
 
     private inline fun convert(f: (fmt: Formatting, str: String) -> String): String {
-        return fragments.filter { it.second.isNotEmpty() }.fold("") { acc, (fmt, str) ->
-            acc + f(fmt, str)
+        return fragments.filter { it.str.isNotEmpty() }.fold("") { acc, frag ->
+            acc + when (frag) {
+                is Raw -> frag.str
+                is Formatted -> f(frag.fmt, frag.str)
+            }
         }
     }
 
@@ -33,3 +37,10 @@ data class Text(val fragments: List<Pair<Formatting, String>>) {
                 fmt.endHTML
     }
 }
+
+sealed class Fragment {
+    abstract val str: String
+}
+
+data class Raw(override val str: String) : Fragment()
+data class Formatted(val fmt: Formatting, override val str: String) : Fragment()
