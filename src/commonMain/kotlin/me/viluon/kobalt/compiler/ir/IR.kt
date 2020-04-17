@@ -3,7 +3,7 @@ package me.viluon.kobalt.compiler.ir
 import me.viluon.kobalt.extensions.text.*
 import kotlin.native.concurrent.ThreadLocal
 
-sealed class BasicBlock : Verifiable, Pretty, Tabular {
+sealed class BasicBlock : Verifiable, Tabular {
     @ThreadLocal
     companion object {
         internal var i = 0
@@ -67,17 +67,6 @@ sealed class BasicBlock : Verifiable, Pretty, Tabular {
                     acc + "node$id:$port -> node$nodeId:n [color=white];\n"
                 }
     }
-
-    override fun asTable(): Table {
-        val rows = mutableListOf(TableRow(listOf(TableData(Text() + ";; " + Magenta + "block #$id"))))
-
-        if (variables.isNotEmpty()) for (v in variables)
-            rows.add(TableRow(listOf(TableData(v.pretty()))))
-
-        for (i in instructions) rows.add(i.asRow())
-
-        return Table(rows)
-    }
 }
 
 class InnerBlock : BasicBlock() {
@@ -86,19 +75,19 @@ class InnerBlock : BasicBlock() {
         return this
     }
 
-    override fun pretty(): Text {
-        var txt = Text() + ";; " + Magenta + "block #$id\n"
+    override fun asTable(): Table {
+        val rows = mutableListOf(TableRow(TableCell(Text() + ";; " + Magenta + "block #$id")))
 
-        if (variables.isNotEmpty()) txt = txt + None + "; variables\n"
-        for (v in variables) {
-            txt = txt + "\t" + v.pretty() + "\n"
+        if (variables.isNotEmpty()) {
+            rows.add(TableRow(TableCell(Text() + Grey + ";; variables")))
+            for (v in variables)
+                rows.add(v.asRow())
         }
 
-        txt = txt + None + "\n; instructions\n"
-        for (i in instructions)
-            txt = txt + "\t" + i.pretty() + "\n"
+        rows.add(TableRow(TableCell(Text() + Grey + ";; instructions")))
+        for (i in instructions) rows.add(i.asRow())
 
-        return txt
+        return Table(rows)
     }
 }
 
@@ -136,5 +125,6 @@ class RootBlock : BasicBlock() {
                 "The root block should have exactly one follower."
             }
 
-    override fun pretty(): Text = Text() + ";;; root\n"
+    override fun asTable(): Table =
+        Table(listOf(TableRow(TableCell(Text() + ";;; root", listOf(followers.first().id)))))
 }

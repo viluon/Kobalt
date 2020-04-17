@@ -6,43 +6,8 @@ typealias PI = Proxy<TyInteger, *>
 typealias PF = Proxy<TyDouble, *>
 
 interface Phi
-sealed class Instruction : Verifiable, Pretty, PrettyRowData {
+sealed class Instruction : Verifiable, TabularRow {
     protected val instructionName: String = this::class.simpleName!!.substring(5)
-}
-
-/**
- * A terminator instruction introduces a branch or returns from a function,
- * and thus can only occur as the last instruction in a basic block.
- */
-sealed class Terminator : Instruction() {
-    override fun pretty(): Text = Text() + Yellow + instructionName + " "
-}
-
-data class InstrReturn1<T : LuaType>(val v: Proxy<T, *>) : Terminator() {
-    override val invariants = none
-    override fun pretty(): Text = super.pretty() + v.pretty()
-    override fun asRow(): TableRow = TableRow(listOf(TableData(super.pretty()), v.asCell()))
-}
-
-data class InstrJump(val target: BasicBlock) : Terminator() {
-    override val invariants = none
-    override fun pretty(): Text = super.pretty() + Magenta + "#${target.id}"
-    override fun asRow(): TableRow =
-        TableRow(TableData(super.pretty()), TableData(Text() + Magenta + "#${target.id}", listOf(target.id)))
-}
-
-data class InstrEqI(val left: PI, val right: PI, val targetEq: BasicBlock, val targetNeq: BasicBlock) : Terminator() {
-    override val invariants get() = none
-    override fun pretty(): Text =
-        super.pretty() + left.pretty() + " " + right.pretty() + Magenta + " #${targetEq.id} #${targetNeq.id}"
-
-    override fun asRow(): TableRow = TableRow(
-        TableData(super.pretty()),
-        left.asCell(),
-        right.asCell(),
-        TableData(Text() + Magenta + "#${targetEq.id} ", listOf(targetEq.id)),
-        TableData(Text() + Magenta + "#${targetNeq.id} ", listOf(targetNeq.id))
-    )
 }
 
 sealed class BinaryInstruction<T : LuaType>(
@@ -55,36 +20,62 @@ sealed class BinaryInstruction<T : LuaType>(
             "The target variable should not be either of the source variables."
         }
 
-    override fun pretty(): Text = Text() +
-            Blue + instructionName +
-            " " + target.pretty() +
-            " " + left.pretty() +
-            " " + right.pretty()
-
     override fun asRow(): TableRow = TableRow(
-        TableData(Text() + Blue + instructionName),
+        TableCell(Text() + Blue + instructionName),
         target.asCell(),
         left.asCell(),
         right.asCell()
     )
 }
 
-class InstrAddI(target: PI, left: PI, right: PI) : BinaryInstruction<TyInteger>(target, left, right)
-class InstrAddF(target: PF, left: PF, right: PF) : BinaryInstruction<TyDouble>(target, left, right)
-
-data class InstrLoadI(val target: PI, val n: ConstI) : Instruction() {
-    override val invariants = none
-    override fun pretty(): Text = Text() + Blue + instructionName + " " + target.pretty() + " " + n.pretty()
+sealed class Load<T : LuaConstantType>(
+    val target: Proxy<T, *>,
+    val const: Constant<T>
+) : Instruction() {
     override fun asRow(): TableRow = TableRow(
-        TableData(Text() + Blue + instructionName),
+        TableCell(Text() + Blue + instructionName),
         target.asCell(),
-        n.asCell()
+        const.asCell()
     )
 }
 
-data class InstrLoadF(val target: PF, val n: ConstF) : Instruction() {
+/**
+ * A terminator instruction introduces a branch or returns from a function,
+ * and thus can only occur as the last instruction in a basic block.
+ */
+sealed class Terminator : Instruction() {
+    override fun asRow(): TableRow = TableRow(TableCell(Text() + Yellow + instructionName))
+}
+
+data class InstrReturn1<T : LuaType>(val v: Proxy<T, *>) : Terminator() {
     override val invariants = none
-    override fun pretty(): Text = Text() + Blue + instructionName + " " + target.pretty() + " " + n.pretty()
+    override fun asRow(): TableRow = super.asRow() + v.asCell()
+}
+
+data class InstrJump(val target: BasicBlock) : Terminator() {
+    override val invariants = none
+    override fun asRow(): TableRow = super.asRow() + TableCell(Text() + Magenta + "#${target.id}", listOf(target.id))
+}
+
+data class InstrEqI(val left: PI, val right: PI, val targetEq: BasicBlock, val targetNeq: BasicBlock) : Terminator() {
+    override val invariants get() = none
+
+    override fun asRow(): TableRow = super.asRow() +
+            left.asCell() +
+            right.asCell() +
+            TableCell(Text() + Magenta + "#${targetEq.id} ", listOf(targetEq.id)) +
+            TableCell(Text() + Magenta + "#${targetNeq.id} ", listOf(targetNeq.id))
+}
+
+class InstrAddI(target: PI, left: PI, right: PI) : BinaryInstruction<TyInteger>(target, left, right)
+class InstrAddF(target: PF, left: PF, right: PF) : BinaryInstruction<TyDouble>(target, left, right)
+
+class InstrLoadI(target: PI, const: ConstI) : Load<TyInteger>(target, const) {
+    override val invariants = none
+}
+
+class InstrLoadF(target: PF, const: ConstF) : Load<TyDouble>(target, const) {
+    override val invariants = none
 }
 
 data class InstrPhiI(val target: PI, val arguments: List<PI>) : Instruction(), Phi {
@@ -96,11 +87,8 @@ data class InstrPhiI(val target: PI, val arguments: List<PI>) : Instruction(), P
                 "No variable can be assigned to itself."
             }
 
-    override fun pretty(): Text =
-        arguments.fold(Text() + Green + instructionName + " " + target.pretty()) { acc, arg -> acc + " " + arg.pretty() }
-
     override fun asRow(): TableRow = TableRow(listOf(
-        TableData(Text() + Green + instructionName),
+        TableCell(Text() + Green + instructionName),
         target.asCell()
     ) + arguments.map { it.asCell() })
 }

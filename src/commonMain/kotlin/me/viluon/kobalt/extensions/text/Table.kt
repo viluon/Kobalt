@@ -26,8 +26,9 @@ data class Table(val rows: List<TableRow>) {
 /**
  * An HTML table row for rendering to Dot.
  */
-data class TableRow(val data: List<TableData>) {
-    constructor(vararg d: TableData) : this(d.asList())
+@Suppress("NOTHING_TO_INLINE")
+data class TableRow(val data: List<TableCell>) {
+    constructor(vararg d: TableCell) : this(d.asList())
 
     fun toHTML(conns: PortNodeConnections): Pair<String, PortNodeConnections> {
         val (str, id) = data.fold(Pair("", conns)) { (str, connectionAcc), td ->
@@ -36,9 +37,13 @@ data class TableRow(val data: List<TableData>) {
         }
         return Pair("<tr>$str</tr>", id)
     }
+
+    inline operator fun plus(d: TableCell): TableRow {
+        return TableRow(data + d)
+    }
 }
 
-data class TableData(val txt: Text, val connections: List<Int> = listOf()) {
+data class TableCell(val txt: Text, val connections: List<Int> = listOf()) {
     fun toHTML(conns: PortNodeConnections, colspan: Int): Pair<String, PortNodeConnections> {
         val port = "data_" + conns.size
         val portAttr = if (connections.isNotEmpty()) "port=\"$port\"" else ""
