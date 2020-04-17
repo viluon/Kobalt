@@ -1,5 +1,7 @@
 package me.viluon.kobalt.extensions.text
 
+import me.viluon.kobalt.extensions.Nat
+
 typealias PortNodeConnections = List<Pair<String, Int>>
 
 data class Table(val rows: List<TableRow>) {
@@ -44,6 +46,8 @@ data class TableRow(val data: List<TableCell>) {
 }
 
 data class TableCell(val txt: Text, val connections: List<Int> = listOf()) {
+    constructor(txt: Text, connection: Nat) : this(txt, listOf(connection.value))
+
     fun toHTML(conns: PortNodeConnections, colspan: Int): Pair<String, PortNodeConnections> {
         val port = "data_" + conns.size
         val portAttr = if (connections.isNotEmpty()) "port=\"$port\"" else ""

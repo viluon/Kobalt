@@ -52,19 +52,26 @@ data class InstrReturn1<T : LuaType>(val v: Proxy<T, *>) : Terminator() {
     override fun asRow(): TableRow = super.asRow() + v.asCell()
 }
 
-data class InstrJump(val target: BasicBlock) : Terminator() {
+data class InstrJump<P : BlockParams, Sg : BlockSignature>(val params: P, val target: BasicBlock<Sg>) : Terminator() {
     override val invariants = none
-    override fun asRow(): TableRow = super.asRow() + TableCell(Text() + Magenta + "#${target.id}", listOf(target.id))
+    override fun asRow(): TableRow = super.asRow() + TableCell(Text() + Magenta + "#${target.id}", target.id)
 }
 
-data class InstrEqI(val left: PI, val right: PI, val targetEq: BasicBlock, val targetNeq: BasicBlock) : Terminator() {
+data class InstrEqI<EqP : BlockParams, NeqP : BlockParams, EqSg : BlockSignature, NeqSg : BlockSignature>(
+    val left: PI,
+    val right: PI,
+    val eqParams: EqP,
+    val neqParams: NeqP,
+    val targetEq: BasicBlock<EqSg>,
+    val targetNeq: BasicBlock<NeqSg>
+) : Terminator() {
     override val invariants get() = none
 
     override fun asRow(): TableRow = super.asRow() +
             left.asCell() +
             right.asCell() +
-            TableCell(Text() + Magenta + "#${targetEq.id} ", listOf(targetEq.id)) +
-            TableCell(Text() + Magenta + "#${targetNeq.id} ", listOf(targetNeq.id))
+            TableCell(Text() + Magenta + "#${targetEq.id} ", targetEq.id) +
+            TableCell(Text() + Magenta + "#${targetNeq.id} ", targetNeq.id)
 }
 
 class InstrAddI(target: PI, left: PI, right: PI) : BinaryInstruction<TyInteger>(target, left, right)

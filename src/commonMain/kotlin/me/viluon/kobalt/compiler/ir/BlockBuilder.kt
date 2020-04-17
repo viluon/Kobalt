@@ -1,11 +1,9 @@
 package me.viluon.kobalt.compiler.ir
 
 import me.viluon.kobalt.compiler.syntax.TkIdentifier
-import me.viluon.kobalt.extensions.Nat
-import me.viluon.kobalt.extensions.S
-import me.viluon.kobalt.extensions.Z
+import me.viluon.kobalt.extensions.*
 
-data class InnerBlockBuilder(private val block: InnerBlock) {
+data class InnerBlockBuilder<out Sg : BlockSignature>(private val block: InnerBlock<Sg>) {
     val proxies: MutableList<Proxy<*, *>> = ArrayList()
     private inline val instructions get() = block.instructions
     private inline val constants get() = block.constants
@@ -13,7 +11,7 @@ data class InnerBlockBuilder(private val block: InnerBlock) {
     private inline val predecessors get() = block.predecessors
     val self get() = block
 
-    private fun addFollower(follower: BasicBlock): BasicBlock {
+    private fun addFollower(follower: BasicBlock<*>): BasicBlock<*> {
         block.followers.add(follower)
         follower.predecessors.add(block)
         return follower
@@ -27,7 +25,7 @@ data class InnerBlockBuilder(private val block: InnerBlock) {
         return addProxy(v)
     }
 
-    infix fun emit(instr: Instruction): BasicBlock {
+    infix fun emit(instr: Instruction): BasicBlock<Sg> {
         instructions.add(instr)
         return block
     }
@@ -35,34 +33,43 @@ data class InnerBlockBuilder(private val block: InnerBlock) {
     fun <T : LuaType, n : Nat> ret(v: Proxy<T, S<n>>): Terminator =
         InstrReturn1(v).also { instructions.add(it) }
 
-    fun jmp(target: BasicBlock): Terminator = InstrJump(target).also {
-        instructions.add(it)
-        addFollower(target)
-    }
+    fun <Params : BlockParams, Sign : BlockSignature> jmp(
+        cert: TypeValidationCertificate<Sign, Params>,
+        target: BasicBlock<Sign>
+    ): Terminator =
+        InstrJump(cert.params, target).also {
+            instructions.add(it)
+            addFollower(target)
+        }
 
-    fun <n : Nat, m : Nat> eqI(
+    fun <n : Nat, m : Nat, EqP : BlockParams, NeqP : BlockParams, EqSg : BlockSignature, NeqSg : BlockSignature> eqI(
         left: Proxy<TyInteger, S<n>>,
         right: Proxy<TyInteger, S<m>>,
-        targetEq: BasicBlock,
-        targetNeq: BasicBlock
-    ): Terminator {
-        val instr = InstrEqI(left, right, targetEq, targetNeq)
-        instructions.add(instr)
+        eqCert: TypeValidationCertificate<EqSg, EqP>,
+        neqCert: TypeValidationCertificate<NeqSg, NeqP>,
+        targetEq: BasicBlock<EqSg>,
+        targetNeq: BasicBlock<NeqSg>
+    ): Terminator = InstrEqI(left, right, eqCert.params, neqCert.params, targetEq, targetNeq).also {
+        instructions.add(it)
         addFollower(targetEq)
         addFollower(targetNeq)
-        return instr
     }
 
     // FIXME there's a possibility of information loss when new proxies emerge in the nested block, since
     //  they're added to a different list and not copied back
-    inline fun block(f: InnerBlockBuilder.() -> Terminator): BasicBlock = InnerBlock().apply {
-        open {
-            this@InnerBlockBuilder.proxies.forEach { it.builder = this }
-            f()
+    // FIXME plus this is now useless, remove it and check block ID in proxies
+    inline fun <Sign : BlockSignature> block(
+        signature: Sign,
+        f: InnerBlockBuilder<Sign>.() -> Terminator
+    ): BasicBlock<Sign> =
+        InnerBlock(signature).apply {
+            open {
+                this@InnerBlockBuilder.proxies.forEach { it.builder = this }
+                f()
+            }
+        }.also {
+            proxies.forEach { it.builder = this }
         }
-    }.also {
-        proxies.forEach { it.builder = this }
-    }
 
     fun const(n: Long): ConstI = ConstI(n).also { constants.add(it) }
     fun const(n: Double): ConstF = ConstF(n).also { constants.add(it) }

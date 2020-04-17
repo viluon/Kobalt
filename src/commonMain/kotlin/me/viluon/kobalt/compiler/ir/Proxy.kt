@@ -6,13 +6,13 @@ import me.viluon.kobalt.extensions.Z
 import me.viluon.kobalt.extensions.text.*
 
 class Proxy<T : LuaType, n : Nat>(
-    var builder: InnerBlockBuilder,
+    var builder: InnerBlockBuilder<*>,
     val v: Variable<T>,
     private val usages: n
 ) : TabularCell {
     companion object {
         @Suppress("NOTHING_TO_INLINE")
-        inline operator fun <T : LuaType> invoke(builder: InnerBlockBuilder, v: Variable<T>): Proxy<T, Z> {
+        inline operator fun <T : LuaType> invoke(builder: InnerBlockBuilder<*>, v: Variable<T>): Proxy<T, Z> {
             return Proxy(builder, v, Z)
         }
     }
@@ -87,32 +87,5 @@ infix fun <n : Nat, T : LuaConstantType> Proxy<T, n>.loadK(const: Constant<T>): 
         TyNil -> TODO()
     })
 
-    return next
-}
-
-fun <n : Nat, m : Nat, k : Nat> Proxy<TyInteger, n>.phiI(
-    a: Proxy<TyInteger, S<m>>,
-    b: Proxy<TyInteger, S<k>>
-): Proxy<TyInteger, S<n>> {
-    builder emit InstrPhiI(next as PI, a, b)
-    return next
-}
-
-fun <n : Nat, m : Nat, k : Nat, j : Nat> Proxy<TyInteger, n>.phiI(
-    a: Proxy<TyInteger, S<m>>,
-    b: Proxy<TyInteger, S<k>>,
-    c: Proxy<TyInteger, S<j>>
-): Proxy<TyInteger, S<n>> {
-    builder emit InstrPhiI(next as PI, a, b, c)
-    return next
-}
-
-fun <n : Nat, m : Nat, k : Nat, j : Nat, l : Nat> Proxy<TyInteger, n>.phiI(
-    a: Proxy<TyInteger, S<m>>,
-    b: Proxy<TyInteger, S<k>>,
-    c: Proxy<TyInteger, S<j>>,
-    d: Proxy<TyInteger, S<l>>
-): Proxy<TyInteger, S<n>> {
-    builder emit InstrPhiI(next as PI, a, b, c, d)
     return next
 }

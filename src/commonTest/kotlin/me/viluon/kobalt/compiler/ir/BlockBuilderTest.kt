@@ -1,13 +1,17 @@
 package me.viluon.kobalt.compiler.ir
 
+import me.viluon.kobalt.compiler.syntax.TkIdentifier
+import me.viluon.kobalt.extensions.*
 import me.viluon.kobalt.testUtils.assertValid
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import me.viluon.kobalt.compiler.ir.TypeValidationCertificate.Companion.check0
+import me.viluon.kobalt.compiler.ir.TypeValidationCertificate.Companion.check1
 
 class BlockBuilderTest {
     @BeforeTest
     fun resetBlockCounter() {
-        BasicBlock.i = 0
+        BasicBlock.i = Z
     }
 
     @Test
@@ -25,7 +29,7 @@ class BlockBuilderTest {
             ret(x1)
         }
 
-        println(ir.asDot())
+        println(ir.asDigraph())
         ir.assertValid()
     }
 
@@ -40,15 +44,15 @@ class BlockBuilderTest {
             val x1 = x0 loadK one
             val y1 = y0 loadK five
 
-            eqI(x1, y1, block {
+            eqI(x1, y1, HNil.check0, HNil.check0, block(HNil) {
                 ret(x1)
-            }, block {
+            }, block(HNil) {
                 val x2 = x1.add(x1, y1)
                 ret(x2)
             })
         }
 
-        println(ir.asDot())
+        println(ir.asDigraph())
         ir.assertValid()
     }
 
@@ -68,20 +72,22 @@ class BlockBuilderTest {
             val limit = limit0 loadK twelve
             val step = step0 loadK one
 
-            val i2 = i1.next
-            val i3 = i2.next
-
-            jmp(block {
-                val i2 = i1.phiI(i1, i3)
+            val i1p = hvectOf<Proxy<TyInteger, S<Z>>, Proxy<TyInteger, *>>(i1)
+            val signature = hvectOf(Variable(TkIdentifier("i"), 0, TyInteger))
+            jmp(signature.check1(i1p), block(signature) {
+                val i2 = phi1()
                 val i3 = i2.add(i2, step)
 
-                eqI(i3, limit, block {
-                    ret(limit)
+                val i3p = HCons(i3, HNil)
+                val limitp = hvectOf(limit)
+                val sign = hvectOf(Variable(TkIdentifier("l"), 0, TyInteger))
+                eqI(i3, limit, sign.check1(limitp), signature.check1(i3p), block(sign) {
+                    ret(phi1())
                 }, self)
             })
         }
 
-        println(ir.asDot())
+        println(ir.asDigraph())
         ir.assertValid()
     }
 }

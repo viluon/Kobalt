@@ -1,20 +1,24 @@
 package me.viluon.kobalt.compiler.ir
 
+import me.viluon.kobalt.extensions.*
 import me.viluon.kobalt.extensions.text.*
 import kotlin.native.concurrent.ThreadLocal
 
-sealed class BasicBlock : Verifiable, Tabular {
+typealias BlockParams = HVector<Proxy<*, *>, *>
+typealias BlockSignature = HVector<Variable<*>, *>
+
+sealed class BasicBlock<out S : BlockSignature>(val signature: S) : Verifiable, Tabular {
     @ThreadLocal
     companion object {
-        internal var i = 0
+        internal var i: Nat = Z
     }
 
-    internal val id = i++
+    internal val id = i.also { i = S(i) }
     open val constants: MutableList<Constant<*>> = ArrayList(4)
     open val variables: MutableList<Variable<*>> = ArrayList(4)
     open val instructions: MutableList<Instruction> = ArrayList(8)
-    open val predecessors: MutableList<BasicBlock> = ArrayList(2)
-    val followers: MutableList<BasicBlock> = ArrayList(2)
+    open val predecessors: MutableList<BasicBlock<*>> = ArrayList(2)
+    val followers: MutableList<BasicBlock<*>> = ArrayList(2)
     override val verifiableChildren: Iterable<Verifiable>
         get() = (variables as Iterable<Verifiable>) + instructions + predecessors + followers
     override val invariants
@@ -38,14 +42,14 @@ sealed class BasicBlock : Verifiable, Tabular {
                 "Constants should be unique."
             }
 
-    fun asDot() = """digraph {
+    fun asDigraph() = """digraph {
         bgcolor=black;
         fontcolor=white;
         color=white;
         ${toDot()}
     }""".trimIndent()
 
-    private fun toDot(processed: Set<BasicBlock> = setOf()): String {
+    private fun toDot(processed: Set<BasicBlock<*>> = setOf()): String {
         val (tableHTML, nodeConnections) = asTable().toHTML(listOf())
 
         val prefix = """
@@ -69,14 +73,21 @@ sealed class BasicBlock : Verifiable, Tabular {
     }
 }
 
-class InnerBlock : BasicBlock() {
-    inline fun open(builder: InnerBlockBuilder.() -> Terminator): InnerBlock {
+class InnerBlock<out S : BlockSignature>(signature: S) : BasicBlock<S>(signature) {
+    inline fun open(builder: InnerBlockBuilder<S>.() -> Terminator): InnerBlock<S> {
         builder(InnerBlockBuilder(this))
         return this
     }
 
     override fun asTable(): Table {
         val rows = mutableListOf(TableRow(TableCell(Text() + ";; " + Magenta + "block #$id")))
+
+        if (signature.isNotEmpty()) {
+            rows.add(TableRow(TableCell(Text() + Grey + ";; arguments")))
+            for (v in signature) {
+                rows.add(v.asRow())
+            }
+        }
 
         if (variables.isNotEmpty()) {
             rows.add(TableRow(TableCell(Text() + Grey + ";; variables")))
@@ -92,23 +103,23 @@ class InnerBlock : BasicBlock() {
 }
 
 @Suppress("UNCHECKED_CAST")
-class RootBlock : BasicBlock() {
+class RootBlock : BasicBlock<HNil>(HNil) {
     companion object {
         private val empty: MutableList<out Any> = ArrayList(0)
     }
 
     override val variables: MutableList<Variable<*>> = empty as MutableList<Variable<*>>
     override val instructions: MutableList<Instruction> = empty as MutableList<Instruction>
-    override val predecessors: MutableList<BasicBlock> = empty as MutableList<BasicBlock>
+    override val predecessors: MutableList<BasicBlock<*>> = empty as MutableList<BasicBlock<*>>
 
-    inline fun open(builder: InnerBlockBuilder.() -> Terminator): RootBlock {
+    inline fun open(builder: InnerBlockBuilder<HNil>.() -> Terminator): RootBlock {
         if (followers.isNotEmpty()) {
-            val first = followers.first() as InnerBlock
+            val first = followers.first() as InnerBlock<HNil>
             first.open(builder)
             return this
         }
 
-        val first = InnerBlock()
+        val first = InnerBlock(HNil)
         this.followers.add(first)
         first.predecessors.add(this)
 
@@ -126,5 +137,5 @@ class RootBlock : BasicBlock() {
             }
 
     override fun asTable(): Table =
-        Table(listOf(TableRow(TableCell(Text() + ";;; root", listOf(followers.first().id)))))
+        Table(listOf(TableRow(TableCell(Text() + ";;; root", listOf(followers.first().id.value)))))
 }
