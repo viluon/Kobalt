@@ -6,7 +6,7 @@ typealias BlockPxs = HVector<Px<*, *>, *>
 typealias vStar = Variable<*>
 typealias pStar = Px<*, *>
 typealias HCV<T, XS> = HCons<Variable<T>, XS, vStar, *>
-typealias HCP<T, XS> = HCons<Px<T, *>, XS, pStar, *>
+typealias HCP<T, XS> = HCons<Px<T, S<*>>, XS, pStar, *>
 
 class TypeValidationCertificate<Sg : BlockSignature, P : BlockPxs> private constructor(
     @Suppress("UNUSED_PARAMETER") signature: Sg,
@@ -22,7 +22,7 @@ class TypeValidationCertificate<Sg : BlockSignature, P : BlockPxs> private const
     }
 }
 
-@Suppress("NOTHING_TO_INLINE", "DEPRECATION", "unused")
+@Suppress("NOTHING_TO_INLINE", "DEPRECATION")
 object TypelevelParamChecks {
     // JVM function signatures need to be disambiguated,
     // hence the division into objects by parameter lengths
@@ -46,6 +46,12 @@ object TypelevelParamChecks {
     object Three {
         inline infix fun <Sg, P, A, B, C> Sg.check(params: P): TypeValidationCertificate<Sg, P>
                 where A : LuaType, B : LuaType, C : LuaType, Sg : HCV<A, HCV<B, HCV<C, HNil>>>, P : HCP<A, HCP<B, HCP<C, HNil>>> =
+            TypeValidationCertificate.__construct_unsafe_bypassing_check(this, params)
+    }
+
+    object Four {
+        inline infix fun <Sg, P, A, B, C, D> Sg.check(params: P): TypeValidationCertificate<Sg, P>
+                where A : LuaType, B : LuaType, C : LuaType, D: LuaType, Sg : HCV<A, HCV<B, HCV<C, HCV<D, HNil>>>>, P : HCP<A, HCP<B, HCP<C, HCP<D, HNil>>>> =
             TypeValidationCertificate.__construct_unsafe_bypassing_check(this, params)
     }
 }
@@ -75,4 +81,15 @@ inline fun <A : LuaType, B : LuaType, C : LuaType> InnerBlockBuilder<HCV<A, HCV<
     val proxyC0 = alloc(c.id, c.type) extract this
 
     return Triple(Px(proxyA0.next), Px(proxyB0.next), Px(proxyC0.next))
+}
+
+@Suppress("NOTHING_TO_INLINE")
+inline fun <A : LuaType, B : LuaType, C : LuaType, D : LuaType> InnerBlockBuilder<HCV<A, HCV<B, HCV<C, HCV<D, HNil>>>>>.phi(): HCP<A, HCP<B, HCP<C, HCP<D, HNil>>>> {
+    val (a, b, c, d) = self.signature
+    val proxyA0 = alloc(a.id, a.type) extract this
+    val proxyB0 = alloc(b.id, b.type) extract this
+    val proxyC0 = alloc(c.id, c.type) extract this
+    val proxyD0 = alloc(d.id, d.type) extract this
+
+    return hvectOf(Px(proxyA0.next), Px(proxyB0.next), Px(proxyC0.next), Px(proxyD0.next))
 }

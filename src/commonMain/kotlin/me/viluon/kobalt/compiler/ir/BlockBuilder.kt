@@ -37,7 +37,7 @@ data class InnerBlockBuilder<out Sg : BlockSignature>(private val block: InnerBl
         return block
     }
 
-    fun <T : LuaType, n : Nat> ret(v: Px<T, S<n>>): Terminator =
+    fun <T : LuaType> ret(v: Px<T, S<*>>): Terminator =
         InstrReturn1(v.proxy).also { instructions.add(it) }
 
     fun <Params : BlockPxs, Sign : BlockSignature> jmp(
@@ -49,9 +49,9 @@ data class InnerBlockBuilder<out Sg : BlockSignature>(private val block: InnerBl
             addFollower(target)
         }
 
-    fun <n : Nat, m : Nat, EqP : BlockPxs, NeqP : BlockPxs, EqSg : BlockSignature, NeqSg : BlockSignature> eqI(
-        left: Px<TyInteger, S<n>>,
-        right: Px<TyInteger, S<m>>,
+    fun <EqP : BlockPxs, NeqP : BlockPxs, EqSg : BlockSignature, NeqSg : BlockSignature> eqI(
+        left: Px<TyInteger, S<*>>,
+        right: Px<TyInteger, S<*>>,
         eqCert: TypeValidationCertificate<EqSg, EqP>,
         neqCert: TypeValidationCertificate<NeqSg, NeqP>,
         targetEq: BasicBlock<EqSg>,
@@ -82,10 +82,10 @@ data class InnerBlockBuilder<out Sg : BlockSignature>(private val block: InnerBl
         return f(target.next as Proxy<A, *>, left as Proxy<A, *>, right as Proxy<A, *>)
     }
 
-    fun <n : Nat, m : Nat, k : Nat, T : LuaType> add(
+    fun <n : Nat, T : LuaType> add(
         target: Px<T, n>,
-        left: Px<T, S<m>>,
-        right: Px<T, S<k>>
+        left: Px<T, S<*>>,
+        right: Px<T, S<*>>
     ): Px<T, S<n>> {
         val t = target.proxy
         val l = left.proxy

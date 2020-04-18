@@ -44,6 +44,17 @@ inline fun <X, Y, ZZ, B> hvectOf(x: X, y: Y, z: ZZ): HCons<X, HCons<Y, HCons<ZZ,
 }
 
 @Suppress("NOTHING_TO_INLINE")
+inline fun <X, Y, ZZ, W, B> hvectOf(
+    x: X,
+    y: Y,
+    z: ZZ,
+    w: W
+): HCons<X, HCons<Y, HCons<ZZ, HCons<W, HNil, B, Z>, B, S<Z>>, B, S<S<Z>>>, B, S<S<S<Z>>>>
+        where X : B, Y : B, ZZ : B, W : B {
+    return HCons(x, hvectOf(y, z, w))
+}
+
+@Suppress("NOTHING_TO_INLINE")
 inline operator fun <X, B> HCons<X, *, B, *>.component1(): X where X : B {
     return head
 }
@@ -56,4 +67,9 @@ inline operator fun <X, B> HCons<*, HCons<X, *, B, *>, B, *>.component2(): X whe
 @Suppress("NOTHING_TO_INLINE")
 inline operator fun <X, B> HCons<*, HCons<*, HCons<X, *, B, *>, B, *>, B, *>.component3(): X where X : B {
     return tail.component2()
+}
+
+@Suppress("NOTHING_TO_INLINE")
+inline operator fun <X, B> HCons<*, HCons<*, HCons<*, HCons<X, *, B, *>, B, *>, B, *>, B, *>.component4(): X where X : B {
+    return tail.component3()
 }

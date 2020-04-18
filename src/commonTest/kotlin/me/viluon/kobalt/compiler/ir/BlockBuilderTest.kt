@@ -1,11 +1,11 @@
 package me.viluon.kobalt.compiler.ir
 
+import me.viluon.kobalt.compiler.ir.TypelevelParamChecks.Four.check
 import me.viluon.kobalt.compiler.ir.TypelevelParamChecks.One.check
 import me.viluon.kobalt.compiler.ir.TypelevelParamChecks.Three.check
 import me.viluon.kobalt.compiler.ir.TypelevelParamChecks.Two.check
 import me.viluon.kobalt.compiler.ir.Variable.Companion.arg
-import me.viluon.kobalt.extensions.Z
-import me.viluon.kobalt.extensions.hvectOf
+import me.viluon.kobalt.extensions.*
 import me.viluon.kobalt.testUtils.assertValid
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -93,6 +93,60 @@ class BlockBuilderTest {
                     ret(phi())
                 }, self)
             })
+        }
+
+        println(ir.asDigraph())
+        ir.assertValid()
+    }
+
+    @Suppress("NAME_SHADOWING")
+    @Test
+    fun nicerLoop() {
+        val ir = RootBlock().open {
+            val i0 = alloc("i", TyInteger)
+            val cnt0 = alloc("cnt", TyInteger)
+            val step0 = alloc("step", TyInteger)
+            val limit0 = alloc("limit", TyInteger)
+
+            val zero = const(0)
+            val one = const(1)
+            val twelve = const(12)
+
+            val i1 = loadK(i0, zero)
+            val cnt = loadK(cnt0, zero)
+            val step = loadK(step0, one)
+            val limit = loadK(limit0, twelve)
+
+            val body by lazy {
+                block(hvectOf(
+                    arg("i", TyInteger),
+                    arg("cnt", TyInteger),
+                    arg("step", TyInteger),
+                    arg("limit", TyInteger)
+                )
+                ) {
+                    val (i2, cnt, step, limit) = phi()
+                    val cnt2 = add(cnt, cnt, i2)
+                    val i3 = add(i2, i2, step)
+
+                    val end by lazy {
+                        block(hvectOf(arg("result", TyInteger))) {
+                            ret(phi())
+                        }
+                    }
+
+                    eqI(
+                        i3,
+                        limit,
+                        end.signature check hvectOf(cnt2),
+                        self.signature check hvectOf(i3, cnt2, step, limit),
+                        end,
+                        self
+                    )
+                }
+            }
+
+            jmp(body.signature check hvectOf(i1, cnt, step, limit), body)
         }
 
         println(ir.asDigraph())

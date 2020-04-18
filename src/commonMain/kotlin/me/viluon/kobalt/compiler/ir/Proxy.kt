@@ -10,7 +10,7 @@ import me.viluon.kobalt.extensions.text.Text
 /**
  *  Px guards builder boundaries.
  */
-inline class Px<T : LuaType, n : Nat>(private val proxy: Proxy<T, n>) {
+inline class Px<T : LuaType, out n : Nat>(private val proxy: Proxy<T, n>) {
     infix fun extract(builder: InnerBlockBuilder<*>): Proxy<T, n> =
         if (proxy.builder == builder) proxy
         else throw IllegalArgumentException(
@@ -19,7 +19,7 @@ inline class Px<T : LuaType, n : Nat>(private val proxy: Proxy<T, n>) {
         )
 }
 
-class Proxy<T : LuaType, n : Nat>(
+class Proxy<T : LuaType, out n : Nat>(
     val builder: InnerBlockBuilder<*>,
     val v: Variable<T>,
     val usages: n
@@ -32,7 +32,7 @@ class Proxy<T : LuaType, n : Nat>(
     }
 
     // TODO room for optimisation
-    val next: Proxy<T, S<n>> by lazy { Proxy(builder, v, S(usages)) }
+    val next: Proxy<T, S<@UnsafeVariance n>> by lazy { Proxy(builder, v, S(usages)) }
 
     override fun asCell(): TableCell = TableCell(Text() + v.id.name + "<sub>${usages.value}</sub>")
 
