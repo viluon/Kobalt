@@ -1,12 +1,14 @@
 package me.viluon.kobalt.compiler.ir
 
-import me.viluon.kobalt.compiler.syntax.TkIdentifier
-import me.viluon.kobalt.extensions.*
+import me.viluon.kobalt.compiler.ir.TypelevelParamChecks.One.check
+import me.viluon.kobalt.compiler.ir.TypelevelParamChecks.Three.check
+import me.viluon.kobalt.compiler.ir.TypelevelParamChecks.Two.check
+import me.viluon.kobalt.compiler.ir.Variable.Companion.arg
+import me.viluon.kobalt.extensions.Z
+import me.viluon.kobalt.extensions.hvectOf
 import me.viluon.kobalt.testUtils.assertValid
 import kotlin.test.BeforeTest
 import kotlin.test.Test
-import me.viluon.kobalt.compiler.ir.TypeValidationCertificate.Companion.check0
-import me.viluon.kobalt.compiler.ir.TypeValidationCertificate.Companion.check1
 
 class BlockBuilderTest {
     @BeforeTest
@@ -22,10 +24,10 @@ class BlockBuilderTest {
             val z0 = alloc("z", TyDouble)
 
             val one = const(1.0)
-            val y1 = y0 loadK one
-            val z1 = z0 loadK one
+            val y1 = loadK(y0, one)
+            val z1 = loadK(z0, one)
 
-            val x1 = x0.add(y1, z1)
+            val x1 = add(x0, y1, z1)
             ret(x1)
         }
 
@@ -33,6 +35,7 @@ class BlockBuilderTest {
         ir.assertValid()
     }
 
+    @Suppress("NAME_SHADOWING")
     @Test
     fun basicBranch() {
         val ir = RootBlock().open {
@@ -41,13 +44,18 @@ class BlockBuilderTest {
             val one = const(1)
             val five = const(5)
 
-            val x1 = x0 loadK one
-            val y1 = y0 loadK five
+            val x1 = loadK(x0, one)
+            val y1 = loadK(y0, five)
 
-            eqI(x1, y1, HNil.check0, HNil.check0, block(HNil) {
-                ret(x1)
-            }, block(HNil) {
-                val x2 = x1.add(x1, y1)
+            val x1p = hvectOf(x1)
+            val params = hvectOf(x1, y1)
+            val sig1 = hvectOf(arg("x", TyInteger))
+            val sig2 = hvectOf(arg("x", TyInteger), arg("y", TyInteger))
+            eqI(x1, y1, sig1 check x1p, sig2 check params, block(sig1) {
+                ret(phi())
+            }, block(sig2) {
+                val (x1, y1) = phi()
+                val x2 = add(x1, x1, y1)
                 ret(x2)
             })
         }
@@ -68,21 +76,21 @@ class BlockBuilderTest {
             val one = const(1)
             val twelve = const(12)
 
-            val i1 = i0 loadK zero
-            val limit = limit0 loadK twelve
-            val step = step0 loadK one
+            val i1 = loadK(i0, zero)
+            val limit = loadK(limit0, twelve)
+            val step = loadK(step0, one)
 
-            val i1p = hvectOf<Proxy<TyInteger, S<Z>>, Proxy<TyInteger, *>>(i1)
-            val signature = hvectOf(Variable(TkIdentifier("i"), 0, TyInteger))
-            jmp(signature.check1(i1p), block(signature) {
-                val i2 = phi1()
-                val i3 = i2.add(i2, step)
+            val params = hvectOf(i1, step, limit)
+            val signature = hvectOf(arg("i", TyInteger), arg("step", TyInteger), arg("limit", TyInteger))
+            jmp(signature check params, block(signature) {
+                val (i2, step, limit) = phi()
+                val i3 = add(i2, i2, step)
 
-                val i3p = HCons(i3, HNil)
+                val parameters = hvectOf(i3, step, limit)
                 val limitp = hvectOf(limit)
-                val sign = hvectOf(Variable(TkIdentifier("l"), 0, TyInteger))
-                eqI(i3, limit, sign.check1(limitp), signature.check1(i3p), block(sign) {
-                    ret(phi1())
+                val sign = hvectOf(arg("l", TyInteger))
+                eqI(i3, limit, sign check limitp, signature check parameters, block(sign) {
+                    ret(phi())
                 }, self)
             })
         }

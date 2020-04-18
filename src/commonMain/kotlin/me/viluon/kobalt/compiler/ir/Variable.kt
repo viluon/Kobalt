@@ -9,6 +9,14 @@ data class Variable<T : LuaType>(
     val type: T,
     var liveAt: Short = definedAt
 ) : Verifiable, TabularRow {
+    companion object {
+        fun arg(name: String): Variable<TyUnknown> = arg(name, TyUnknown)
+
+        fun <T : LuaType> arg(name: String, type: T): Variable<T> {
+            return Variable(TkIdentifier(name), 0, type)
+        }
+    }
+
     override val invariants
         get() = define.invariant(definedAt <= liveAt) {
             "The liveness of a variable should follow its definition."

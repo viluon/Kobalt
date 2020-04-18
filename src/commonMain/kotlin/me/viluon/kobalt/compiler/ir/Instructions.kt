@@ -93,6 +93,9 @@ data class InstrPhiI(val target: PI, val arguments: List<PI>) : Instruction(), P
             .invariant(arguments.none { it == target }) {
                 "No variable can be assigned to itself."
             }
+            .invariant(arguments.size >= 2) {
+                "Phi functions take at least two arguments."
+            }
 
     override fun asRow(): TableRow = TableRow(listOf(
         TableCell(Text() + Green + instructionName),
